@@ -867,7 +867,11 @@ class PrintTheShot extends HTMLElement {
     const explicit = String(this.settings.WebUiUrl || "").trim();
     // A full URL wins as typed — its own scheme included: someone who writes
     // https:// for the web UI means it, and "Use HTTP" is about the upload.
-    if (/^https?:\/\//i.test(explicit)) return explicit.replace(/[/]+$/, "") + "/";
+    //
+    // [/] rather than \/ in the pattern: this whole component is one template
+    // literal, and a backslash in it is an escape the template eats — \/ arrives
+    // as / and the regex turns into a syntax error that takes the page with it.
+    if (/^https?:[/][/]/i.test(explicit)) return explicit.replace(/[/]+$/, "") + "/";
     const protocol = this.settings.UseHttp ? "http" : "https";
     const server = String(explicit || this.settings.ServerUrl || "")
       .replace(/^https?:[/][/]/, "")
@@ -1000,7 +1004,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.1";
+	var VERSION = "1.5.2";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;
