@@ -356,6 +356,7 @@ const DEFAULT_SETTINGS = {
   ServerUrl: "",
   ServerEndpoint: "upload",
   UseHttp: true,
+  WebUiUrl: "",
   MachineName: "",
   MinSeconds: 6,
 };
@@ -403,6 +404,13 @@ class PrintTheShot extends HTMLElement {
           <div class="settings-group">
             <label class="settings-label">Upload path</label>
             <input id="set-server-endpoint" type="text" />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Web UI address</label>
+            <input id="set-webui-url" type="text" placeholder="empty = same as server" />
+            <!-- Read-only: the address the Open WebUI button will actually open,
+                 with its host, port and path spelled out. -->
+            <div id="webui-resolved" class="log-info"></div>
           </div>
           <div class="settings-group row">
             <input id="set-use-http" type="checkbox" />
@@ -661,14 +669,19 @@ class PrintTheShot extends HTMLElement {
   }
 
   async saveSettings() {
-    const next = {
+    // Start from what is already stored and overlay the form on top. The form
+    // is hand-written and the settings schema is not, so a setting this page
+    // has no field for — one added to the manifest later, say — would otherwise
+    // be wiped by pressing Save here.
+    const next = Object.assign({}, this.settings, {
       AutoUpload: this.$("#set-auto-upload").checked,
       ServerUrl: this.$("#set-server-url").value.trim(),
       ServerEndpoint: this.$("#set-server-endpoint").value.trim() || "upload",
       UseHttp: this.$("#set-use-http").checked,
+      WebUiUrl: this.$("#set-webui-url").value.trim(),
       MachineName: this.$("#set-machine-name").value.trim(),
       MinSeconds: parseInt(this.$("#set-min-seconds").value, 10) || 0,
-    };
+    });
     try {
       const res = await fetch(SETTINGS_URL, {
         method: "POST",
@@ -677,6 +690,7 @@ class PrintTheShot extends HTMLElement {
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
       this.settings = next;
+      this.updateUI();
       this.log("Settings saved", "success");
     } catch (e) {
       this.log("Failed to save settings: " + e.message, "error");
@@ -688,8 +702,19 @@ class PrintTheShot extends HTMLElement {
     this.$("#set-server-url").value = this.settings.ServerUrl || "";
     this.$("#set-server-endpoint").value = this.settings.ServerEndpoint || "";
     this.$("#set-use-http").checked = !!this.settings.UseHttp;
+    this.$("#set-webui-url").value = this.settings.WebUiUrl || "";
     this.$("#set-machine-name").value = this.settings.MachineName || "";
     this.$("#set-min-seconds").value = this.settings.MinSeconds || 0;
+    // Read-only line: the address Open WebUI opens, host, port and path spelled
+    // out, so it is on screen before the button is pressed — and so the address
+    // can be read off this page and typed into a browser by hand.
+    const webui = this.$("#webui-resolved");
+    if (webui) {
+      const target = this.settings.WebUiUrl || this.settings.ServerUrl;
+      webui.textContent = target
+        ? "opens " + this.buildWebUiUrl()
+        : "set the server address to get a web UI link";
+    }
   }
 
   // ---------- WebSocket ----------
@@ -839,8 +864,12 @@ class PrintTheShot extends HTMLElement {
    * upload URL: the address field holds host[:port] and nothing else.
    */
   buildWebUiUrl() {
+    const explicit = String(this.settings.WebUiUrl || "").trim();
+    // A full URL wins as typed — its own scheme included: someone who writes
+    // https:// for the web UI means it, and "Use HTTP" is about the upload.
+    if (/^https?:\/\//i.test(explicit)) return explicit.replace(/[/]+$/, "") + "/";
     const protocol = this.settings.UseHttp ? "http" : "https";
-    const server = String(this.settings.ServerUrl)
+    const server = String(explicit || this.settings.ServerUrl || "")
       .replace(/^https?:[/][/]/, "")
       .replace(/[/]+$/, "");
     return protocol + "://" + server + "/";
@@ -971,7 +1000,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.0";
+	var VERSION = "1.5.1";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;

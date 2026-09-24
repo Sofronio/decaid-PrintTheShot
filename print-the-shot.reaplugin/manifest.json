@@ -3,9 +3,14 @@
   "author": "Sofronio Chen",
   "name": "Print The Shot",
   "description": "Uploads finished shots in TCL print format to a local print server (DecentEspressoPrintTheShot). Shots are uploaded automatically when they finish; the page adds shot browsing and manual printing.",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "apiVersion": 1,
-  "permissions": ["log", "api", "emit", "events.shots"],
+  "permissions": [
+    "log",
+    "api",
+    "emit",
+    "events.shots"
+  ],
   "settings": {
     "AutoUpload": {
       "type": "boolean",
@@ -16,7 +21,7 @@
     "ServerUrl": {
       "type": "string",
       "label": "Server address",
-      "description": "Print server host and port, e.g. 192.168.1.20:8000"
+      "description": "Print server host and port, e.g. 192.168.1.20:8000. Its web UI (shot list, charts, date filters) is at this address unless Web UI address says otherwise."
     },
     "ServerEndpoint": {
       "type": "string",
@@ -29,6 +34,11 @@
       "label": "Use HTTP",
       "description": "Use HTTP (uncheck for HTTPS)",
       "default": true
+    },
+    "WebUiUrl": {
+      "type": "string",
+      "label": "Web UI address",
+      "description": "The print server's own page — shot list, charts, date filters. Open http://<this address>/ in a browser, or press Open WebUI on the plugin page, which opens exactly this. Leave empty to use the Server address above; set it when the web UI lives somewhere else, e.g. another machine or port."
     },
     "MachineName": {
       "type": "string",
