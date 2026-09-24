@@ -45,7 +45,9 @@ directory on the machine running it. `installFromFolder` copies that directory i
 and stops looking at it — good for trying a local edit, not for a plugin you want
 to keep updated. The same is true of the ZIP route.
 
-The Plugins screen does all four; these are the calls underneath it:
+Those are the four ways to install. The commands below are what the Plugins
+screen runs underneath — run them yourself for exactly the same install, which is
+handier from a terminal or a script:
 
 ```bash
 # GitHub release — what the tablet uses
