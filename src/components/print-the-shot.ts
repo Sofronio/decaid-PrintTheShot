@@ -72,10 +72,7 @@ class PrintTheShot extends HTMLElement {
           </div>
           <div class="settings-group">
             <label class="settings-label">Web UI address</label>
-            <input id="set-webui-url" type="text" placeholder="empty = same as server" />
-            <!-- Read-only: the address the Open WebUI button will actually open,
-                 with its host, port and path spelled out. -->
-            <div id="webui-resolved" class="log-info"></div>
+            <input id="set-webui-url" type="text" placeholder="this plugin's own page" />
           </div>
           <div class="settings-group row">
             <input id="set-use-http" type="checkbox" />
@@ -115,7 +112,6 @@ class PrintTheShot extends HTMLElement {
       <div class="controls">
         <button id="print-current" class="btn-primary">Print current shot</button>
         <button id="print-last" class="btn-secondary">Print last shot</button>
-        <button id="open-webui" class="btn-secondary">Open WebUI</button>
         <button id="save-settings" class="btn-secondary">Save settings</button>
         <button id="clear-logs" class="btn-secondary">Clear log</button>
       </div>
@@ -139,7 +135,6 @@ class PrintTheShot extends HTMLElement {
 
   bindEvents() {
     this.$("#print-last").addEventListener("click", () => this.manualUpload());
-    this.$("#open-webui").addEventListener("click", () => this.openWebUi());
     this.$("#print-current").addEventListener("click", () => this.printCurrent());
     this.$("#prev-shot").addEventListener("click", () => this.stepShot(1));
     this.$("#next-shot").addEventListener("click", () => this.stepShot(-1));
@@ -367,19 +362,11 @@ class PrintTheShot extends HTMLElement {
     this.$("#set-server-url").value = this.settings.ServerUrl || "";
     this.$("#set-server-endpoint").value = this.settings.ServerEndpoint || "";
     this.$("#set-use-http").checked = !!this.settings.UseHttp;
-    this.$("#set-webui-url").value = this.settings.WebUiUrl || "";
+    // Prefilled with this page's own address when nothing is stored: the point
+    // of the field is to have the address in front of you, ready to copy.
+    this.$("#set-webui-url").value = this.settings.WebUiUrl || this.localPageUrl();
     this.$("#set-machine-name").value = this.settings.MachineName || "";
     this.$("#set-min-seconds").value = this.settings.MinSeconds || 0;
-    // Read-only line: the address Open WebUI opens, host, port and path spelled
-    // out, so it is on screen before the button is pressed — and so the address
-    // can be read off this page and typed into a browser by hand.
-    const webui = this.$("#webui-resolved");
-    if (webui) {
-      const target = this.settings.WebUiUrl || this.settings.ServerUrl;
-      webui.textContent = target
-        ? "opens " + this.buildWebUiUrl()
-        : "set the server address to get a web UI link";
-    }
   }
 
   // ---------- WebSocket ----------
@@ -524,48 +511,16 @@ class PrintTheShot extends HTMLElement {
   }
 
   /**
-   * The print server's own page — the root of the configured server, where its
-   * web UI lives (shot list, charts, date filters). Same scheme handling as the
-   * upload URL: the address field holds host[:port] and nothing else.
-   */
-  buildWebUiUrl() {
-    const explicit = String(this.settings.WebUiUrl || "").trim();
-    // A full URL wins as typed — its own scheme included: someone who writes
-    // https:// for the web UI means it, and "Use HTTP" is about the upload.
-    //
-    // [/] rather than \/ in the pattern: this whole component is one template
-    // literal, and a backslash in it is an escape the template eats — \/ arrives
-    // as / and the regex turns into a syntax error that takes the page with it.
-    if (/^https?:[/][/]/i.test(explicit)) return explicit.replace(/[/]+$/, "") + "/";
-    const protocol = this.settings.UseHttp ? "http" : "https";
-    const server = String(explicit || this.settings.ServerUrl || "")
-      .replace(/^https?:[/][/]/, "")
-      .replace(/[/]+$/, "");
-    return protocol + "://" + server + "/";
-  }
-
-  /**
-   * Open that page in a new tab.
+   * This page's own address — the plugin's UI as Decaid serves it.
    *
-   * An anchor with target=_blank rather than window.open: this page is often
-   * shown inside the app's WebView (and, in a skin, inside an iframe), where a
-   * programmatic window.open can be swallowed. A real link click is the form
-   * that survives those embeddings.
+   * Read off location rather than assembled from a setting: it is by definition
+   * wherever this page was loaded from, so it is right even when the tablet is
+   * reached by IP on one device and by hostname on another. What the setting
+   * stores is this string, for reading and retyping somewhere else (a phone, a
+   * desktop) where the plugin page is handier than the settings screen.
    */
-  openWebUi() {
-    if (!this.settings.ServerUrl) {
-      this.log("No server configured — set Server address and save", "warn");
-      return;
-    }
-    const url = this.buildWebUiUrl();
-    this.log("Opening " + url, "info");
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  localPageUrl() {
+    return location.origin + "/api/v1/plugins/" + PLUGIN_ID + "/ui";
   }
 
   buildTargetUrl() {
