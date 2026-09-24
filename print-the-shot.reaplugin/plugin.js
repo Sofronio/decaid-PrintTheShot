@@ -143,6 +143,37 @@ var createPlugin = (function() {
 	}
 	var transformScript = `window.toTclFormat = (${toTclFormat.toString()});`;
 	//#endregion
+	//#region src/utils/utf8.ts
+	/**
+	* UTF-8 byte length, counted by hand.
+	*
+	* This runs in the plugin BACKEND, inside Decaid's embedded JS engine. That
+	* engine has no TextEncoder — asking it for one is what produced
+	* "TextEncoder is not defined" in the plugin log the moment the upload proxy
+	* tried to size its Content-Length header. Web APIs are not available there;
+	* a loop is.
+	*
+	* Content-Length has to be BYTES: shot JSON carries bean names, profile titles
+	* and tasting notes, so the string length and the byte length differ and a
+	* short header truncates the body (or, on a server that trusts it, loses it).
+	*/
+	function utf8ByteLength(value) {
+		let bytes = 0;
+		for (let i = 0; i < value.length; i++) {
+			const c = value.charCodeAt(i);
+			if (c < 128) bytes += 1;
+			else if (c < 2048) bytes += 2;
+			else if (c >= 55296 && c <= 56319 && i + 1 < value.length) {
+				const low = value.charCodeAt(i + 1);
+				if (low >= 56320 && low <= 57343) {
+					bytes += 4;
+					i++;
+				} else bytes += 3;
+			} else bytes += 3;
+		}
+		return bytes;
+	}
+	//#endregion
 	//#region src/utils/html.ts
 	/**
 	* Tagged template literal for HTML strings.
@@ -961,7 +992,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.4";
+	var VERSION = "1.5.5";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;
@@ -1024,13 +1055,33 @@ customElements.define("print-the-shot", PrintTheShot);
 		const ts = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "").slice(0, 15);
 		return `${state.useHttp ? "http" : "https"}://${String(state.serverUrl).replace(/^https?:[/][/]/, "")}/${state.serverEndpoint}?machine_id=${machineId(state.machineName)}&timestamp=${ts}&plugin_version=${VERSION}`;
 	}
+	/**
+	* Headers for a JSON POST, Content-Length included.
+	*
+	* The host's Dart HttpClient sends a chunked body when Content-Length is absent,
+	* and the print servers this plugin talks to (Python http.server, ESP32
+	* sketches) read request bodies by Content-Length — they see an empty request
+	* and save nothing, with no error anywhere. Both upload paths go through here so
+	* neither can quietly lose the header again.
+	*
+	* The length is BYTES, counted without TextEncoder: this code runs in Decaid's
+	* embedded JS engine, which does not have one (asking for it is what put
+	* "TextEncoder is not defined" in the plugin log).
+	*/
+	function jsonPostHeaders(payload) {
+		return {
+			"Content-Type": "application/json",
+			"Content-Length": String(utf8ByteLength(payload))
+		};
+	}
 	async function uploadWithRetry(url, tcl, log) {
 		for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
 			try {
+				const payload = JSON.stringify(tcl);
 				const res = await Promise.race([fetch(url, {
 					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(tcl)
+					headers: jsonPostHeaders(payload),
+					body: payload
 				}), new Promise((_, reject) => setTimeout(() => reject(/* @__PURE__ */ new Error("upload timeout")), UPLOAD_TIMEOUT_MS))]);
 				if (res.ok) {
 					log(`upload OK (attempt ${attempt})`);
@@ -1127,10 +1178,7 @@ customElements.define("print-the-shot", PrintTheShot);
 			const payload = JSON.stringify(tcl);
 			const res = await Promise.race([fetch(body.url, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"Content-Length": String(new TextEncoder().encode(payload).length)
-				},
+				headers: jsonPostHeaders(payload),
 				body: payload
 			}), new Promise((_, reject) => setTimeout(() => reject(/* @__PURE__ */ new Error("upload timeout")), UPLOAD_TIMEOUT_MS))]);
 			const text = await res.text();

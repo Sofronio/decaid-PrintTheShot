@@ -1,6 +1,7 @@
 /// <reference path="./host.d.ts" />
 
-import { toTclFormat } from "./api/transform";
+import { toTclFormat } from "./api/transform"
+import { utf8ByteLength } from "./utils/utf8";
 import { renderSettingsPage } from "./pages/settings";
 
 // Injected by vite from print-the-shot.reaplugin/manifest.json (see
@@ -103,6 +104,26 @@ function buildTargetUrl(state: PrintState): string {
   );
 }
 
+/**
+ * Headers for a JSON POST, Content-Length included.
+ *
+ * The host's Dart HttpClient sends a chunked body when Content-Length is absent,
+ * and the print servers this plugin talks to (Python http.server, ESP32
+ * sketches) read request bodies by Content-Length — they see an empty request
+ * and save nothing, with no error anywhere. Both upload paths go through here so
+ * neither can quietly lose the header again.
+ *
+ * The length is BYTES, counted without TextEncoder: this code runs in Decaid's
+ * embedded JS engine, which does not have one (asking for it is what put
+ * "TextEncoder is not defined" in the plugin log).
+ */
+function jsonPostHeaders(payload: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "Content-Length": String(utf8ByteLength(payload)),
+  };
+}
+
 async function uploadWithRetry(
   url: string,
   tcl: Record<string, unknown>,
@@ -110,11 +131,12 @@ async function uploadWithRetry(
 ): Promise<boolean> {
   for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
     try {
+      const payload = JSON.stringify(tcl);
       const res = await Promise.race([
         fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tcl),
+          headers: jsonPostHeaders(payload),
+          body: payload,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("upload timeout")), UPLOAD_TIMEOUT_MS)
@@ -243,24 +265,10 @@ async function handleUploadProxy(
     const rawShot = body.shot as Record<string, unknown>;
     const tcl = Array.isArray(rawShot.elapsed) ? rawShot : toTclFormat(rawShot);
     const payload = JSON.stringify(tcl);
-    // Content-Length is set explicitly, and it is the UTF-8 byte length.
-    //
-    // Without it the host's Dart HttpClient sends the body with
-    // `Transfer-Encoding: chunked`, and simple embedded print servers (Python
-    // http.server, ESP32 sketches) read request bodies by Content-Length — they
-    // see an empty request and save nothing, with no error anywhere. Setting the
-    // header here keeps this plugin working on a stock Decaid build; the host
-    // sets the same thing on its own side.
-    //
-    // Byte length, not `payload.length`: bean names and profile titles are
-    // multi-byte, and a short Content-Length truncates the JSON.
     const res = await Promise.race([
       fetch(body.url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": String(new TextEncoder().encode(payload).length),
-        },
+        headers: jsonPostHeaders(payload),
         body: payload,
       }),
       new Promise<never>((_, reject) =>
