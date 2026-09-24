@@ -1,5 +1,7 @@
 # Print The Shot for Decaid
 
+English | [中文](README_zh.md)
+
 A [Decaid](https://github.com/decentespresso/decaid) plugin that uploads finished
 shots to a local print server in the DE1's TCL print format — the shape
 [PrintTheShot](https://github.com/Sofronio/DecentEspressoPrintTheShot-next)
@@ -7,6 +9,10 @@ renders into a chart and sends to a thermal printer.
 
 No Decaid release is needed to use this: it installs from this repository's
 releases.
+
+Settings: server address (`host:port`), upload path (default `upload`), web UI
+address, HTTP or HTTPS, the machine name sent as `machine_id`, whether to upload
+automatically as shots finish, and a minimum shot length so flushes are skipped.
 
 ## Install
 
@@ -66,10 +72,6 @@ the install outright:
   `apiVersion` is `1`.
 
 `npm run package` and the release workflow check all of it.
-
-Settings: server address (`host:port`), upload path (default `upload`), web UI
-address, HTTP or HTTPS, the machine name sent as `machine_id`, whether to upload
-automatically as shots finish, and a minimum shot length so flushes are skipped.
 
 ## Where things are
 
