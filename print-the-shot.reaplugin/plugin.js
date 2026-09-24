@@ -992,7 +992,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.5";
+	var VERSION = "1.5.6";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;

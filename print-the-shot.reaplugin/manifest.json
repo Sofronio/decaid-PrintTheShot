@@ -3,7 +3,7 @@
   "author": "Sofronio Chen",
   "name": "Print The Shot",
   "description": "Uploads finished shots in TCL print format to a local print server (DecentEspressoPrintTheShot). Shots are uploaded automatically when they finish; the page adds shot browsing and manual printing.",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "apiVersion": 1,
   "permissions": [
     "log",

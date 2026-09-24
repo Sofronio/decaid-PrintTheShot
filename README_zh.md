@@ -22,19 +22,19 @@ Decaid 知道它从哪来,能帮你更新;后两种是**快照** —— 装进�
 | --- | --- | --- |
 | **GitHub release** | Repository(`owner/repo`)、Asset name(可留空) | `Sofronio/decaid-PrintTheShot`,Asset name **留空** |
 | **GitHub branch** | Repository、Branch | `Sofronio/decaid-PrintTheShot`,分支 `main` |
-| **本地 ZIP** | 选一个 `.zip` 文件 | release Assets 里的 `print-the-shot.reaplugin-<版本号>.zip` |
+| **本地 ZIP** | 选一个 `.zip` 文件 | [`print-the-shot.reaplugin.zip`](https://github.com/Sofronio/decaid-PrintTheShot/releases/latest/download/print-the-shot.reaplugin.zip) —— 永远是最新那版 |
 | **本地文件夹** | 选一个含 `manifest.json` 和 `plugin.js` 的目录 | 仓库里 checkout 出来的 `print-the-shot.reaplugin/` |
 
 **用 GitHub release 这一种。** 平板就该这么装:以后新版本以新 release 的形式出现,
 「检查更新」能找到它。Asset name 可以留空 —— 本仓库的每个 release 都只带一个
 `.zip`。
 
-**ZIP 那条路要下哪个文件**:打开
-[releases 页面](https://github.com/Sofronio/decaid-PrintTheShot/releases),取最新的
-那个 release,下载名为 `print-the-shot.reaplugin-<版本号>.zip` 的 asset —— 名字与
-插件的 id 和版本号对得上。(GitHub 的 *Source code* 按钮给的是整个仓库,不是打包好
-的插件。那个压缩包其实也能装上,因为本仓库只有一个目录含 manifest,但真正测过的是
-release 里那个 asset。)
+**ZIP 那条路要下哪个文件**:直接下
+[`print-the-shot.reaplugin.zip`](https://github.com/Sofronio/decaid-PrintTheShot/releases/latest/download/print-the-shot.reaplugin.zip)。
+每个 release 都用这个**不带版本号**的固定名字挂上压缩包,所以这条链接一直有效,并且
+永远指向最新那版。你拿到的是哪个版本,包里写着(`manifest.json`),release 页面上也
+标着。(GitHub 的 *Source code* 按钮给的是整个仓库,不是打包好的插件。那个压缩包其实
+也能装上,因为本仓库只有一个目录含 manifest,但真正测过的是 release 里那个 asset。)
 
 **文件夹快照**就是字面意思:让 Decaid 指向运行它的那台机器上的一个目录。
 `installFromFolder` 会把这个目录复制进去,之后不再看它 —— 适合试一下本地改动,不

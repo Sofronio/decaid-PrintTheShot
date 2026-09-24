@@ -67,7 +67,14 @@ if [ "$plugin_dir/plugin.js" -ot "$repo_root/src/plugin.ts" ]; then
 fi
 
 mkdir -p "$dist"
-archive="$dist/$plugin_id-$version.zip"
+# 文件名不带版本号:GitHub 的 releases/latest/download/<name> 直链要求名字固定,
+# 带版本号的话每发一版链接就失效一次。版本号在 tag 和 manifest 里,安装器校验
+# 的也是那两处。
+#
+# No version in the file name: GitHub's releases/latest/download/<name> link needs a
+# fixed name — a versioned one breaks the link on every release. The version lives in
+# the tag and the manifest, which is what the installer validates.
+archive="$dist/$plugin_id.zip"
 rm -f "$archive"
 
 # -X strips extra file attributes so repeated runs produce identical bytes.

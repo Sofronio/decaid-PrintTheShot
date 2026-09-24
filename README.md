@@ -24,21 +24,23 @@ them; the last two are **snapshots** — copied in once, never followed.
 | --- | --- | --- |
 | **GitHub release** | Repository (`owner/repo`), Asset name (optional) | `Sofronio/decaid-PrintTheShot`, and leave the asset name **empty** |
 | **GitHub branch** | Repository, Branch | `Sofronio/decaid-PrintTheShot`, branch `main` |
-| **Local ZIP** | the `.zip` file itself | `print-the-shot.reaplugin-<version>.zip` from the release's Assets |
+| **Local ZIP** | the `.zip` file itself | [`print-the-shot.reaplugin.zip`](https://github.com/Sofronio/decaid-PrintTheShot/releases/latest/download/print-the-shot.reaplugin.zip) — always the newest release |
 | **Local folder** | a folder holding `manifest.json` and `plugin.js` | `print-the-shot.reaplugin/` in a checkout of this repository |
 
 **GitHub release is the one to use.** It is how the tablet should be set up: new
 versions then arrive as new releases, and "Check for updates" finds them. The
 asset name can stay empty because a release here carries exactly one `.zip`.
 
-**Which file to download**, for the ZIP route: open the
-[releases page](https://github.com/Sofronio/decaid-PrintTheShot/releases), take
-the latest release, and download the asset named
-`print-the-shot.reaplugin-<version>.zip` — the name that matches the plugin's id
-and version. (GitHub's *Source code* buttons give the whole repository rather
-than the packaged plugin. That archive also resolves, because this repository has
-exactly one directory holding a manifest, but the release asset is the artifact
-that was tested.)
+**Which file to download**, for the ZIP route:
+[`print-the-shot.reaplugin.zip`](https://github.com/Sofronio/decaid-PrintTheShot/releases/latest/download/print-the-shot.reaplugin.zip)
+from the latest release. Every release attaches its archive under that same name
+— no version in it — so that link keeps working and always means the newest one.
+The version you got is inside the bundle (`manifest.json`), and the
+[release page](https://github.com/Sofronio/decaid-PrintTheShot/releases) shows
+it next to the download. (GitHub's *Source code* buttons give the whole
+repository rather than the packaged plugin. That archive also resolves, because
+this repository has exactly one directory holding a manifest, but the release
+asset is the artifact that was tested.)
 
 **Folder snapshot** means exactly what it sounds like: point Decaid at a
 directory on the machine running it. `installFromFolder` copies that directory in

@@ -42,6 +42,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            dist/print-the-shot.reaplugin-*.zip \
+            dist/print-the-shot.reaplugin.zip \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
