@@ -364,6 +364,8 @@ class PrintTheShot extends HTMLElement {
     this.$("#set-use-http").checked = !!this.settings.UseHttp;
     // Prefilled with this page's own address when nothing is stored: the point
     // of the field is to have the address in front of you, ready to copy.
+    // Prefilled with the plugin page's own address when nothing is stored:
+    // the point of the field is to have the address in front of you, ready to copy.
     this.$("#set-webui-url").value = this.settings.WebUiUrl || this.localPageUrl();
     this.$("#set-machine-name").value = this.settings.MachineName || "";
     this.$("#set-min-seconds").value = this.settings.MinSeconds || 0;
