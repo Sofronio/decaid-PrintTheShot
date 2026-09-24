@@ -20,9 +20,46 @@ curl -X POST http://localhost:8080/api/v1/plugins/install/github-release \
 
 Or open the Plugins settings screen in Decaid and install from the repository.
 
-Settings: server address (`host:port`), upload path (default `upload`), HTTP or
-HTTPS, the machine name sent as `machine_id`, whether to upload automatically as
-shots finish, and a minimum shot length so flushes are skipped.
+Settings: server address (`host:port`), upload path (default `upload`), web UI
+address, HTTP or HTTPS, the machine name sent as `machine_id`, whether to upload
+automatically as shots finish, and a minimum shot length so flushes are skipped.
+
+## Where things are
+
+Three addresses across **two servers**. Decaid serves its own API and the plugin
+pages on port `8080`; the print server is a separate program, on the address in
+the Server address setting, with its web UI on `8000`.
+
+**The plugin's settings**, in Decaid:
+
+1. back out of the skin to Decaid's own screens;
+2. **Plugins** — the plugin list;
+3. find **Print The Shot**, then press **Settings** on its row (or the ⋮ menu →
+   Settings).
+
+That dialog *is* the settings: server address, upload path, web UI address, HTTP
+or HTTPS, auto upload, machine name, minimum shot length.
+
+**The plugin's page** — the shot browser, with paging through shots, the log and
+the manual print buttons — is served by Decaid itself:
+
+```
+http://<decaid-host>:8080/api/v1/plugins/print-the-shot.reaplugin/ui
+```
+
+`<decaid-host>` is `localhost` on the machine running Decaid, and that machine's
+LAN address from a phone or desktop. It is the same string the **Web UI address**
+setting holds, which is why that field is prefilled with it.
+
+**The print server's page** — every shot received, charts, date filters — is
+served by the print server, at the address shots are uploaded to:
+
+```
+http://<server-address>:8000/
+```
+
+A different program from Decaid, hence the different port: Decaid decides what
+gets sent, the print server decides what comes out of the printer.
 
 ## What it does
 
