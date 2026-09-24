@@ -106,7 +106,8 @@ class PrintTheShot extends HTMLElement {
       </div>
       <div class="controls">
         <button id="print-current" class="btn-primary">Print current shot</button>
-        <button id="manual-upload" class="btn-secondary">Upload last shot</button>
+        <button id="print-last" class="btn-secondary">Print last shot</button>
+        <button id="open-webui" class="btn-secondary">Open WebUI</button>
         <button id="save-settings" class="btn-secondary">Save settings</button>
         <button id="clear-logs" class="btn-secondary">Clear log</button>
       </div>
@@ -129,7 +130,8 @@ class PrintTheShot extends HTMLElement {
   }
 
   bindEvents() {
-    this.$("#manual-upload").addEventListener("click", () => this.manualUpload());
+    this.$("#print-last").addEventListener("click", () => this.manualUpload());
+    this.$("#open-webui").addEventListener("click", () => this.openWebUi());
     this.$("#print-current").addEventListener("click", () => this.printCurrent());
     this.$("#prev-shot").addEventListener("click", () => this.stepShot(1));
     this.$("#next-shot").addEventListener("click", () => this.stepShot(-1));
@@ -494,6 +496,43 @@ class PrintTheShot extends HTMLElement {
       return false;
     }
     return true;
+  }
+
+  /**
+   * The print server's own page — the root of the configured server, where its
+   * web UI lives (shot list, charts, date filters). Same scheme handling as the
+   * upload URL: the address field holds host[:port] and nothing else.
+   */
+  buildWebUiUrl() {
+    const protocol = this.settings.UseHttp ? "http" : "https";
+    const server = String(this.settings.ServerUrl)
+      .replace(/^https?:[/][/]/, "")
+      .replace(/[/]+$/, "");
+    return protocol + "://" + server + "/";
+  }
+
+  /**
+   * Open that page in a new tab.
+   *
+   * An anchor with target=_blank rather than window.open: this page is often
+   * shown inside the app's WebView (and, in a skin, inside an iframe), where a
+   * programmatic window.open can be swallowed. A real link click is the form
+   * that survives those embeddings.
+   */
+  openWebUi() {
+    if (!this.settings.ServerUrl) {
+      this.log("No server configured — set Server address and save", "warn");
+      return;
+    }
+    const url = this.buildWebUiUrl();
+    this.log("Opening " + url, "info");
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   buildTargetUrl() {
