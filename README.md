@@ -10,15 +10,62 @@ releases.
 
 ## Install
 
-From the Decaid REST API, which installs this repository's latest release:
+Decaid installs plugins from four sources, all four on its Plugins screen. The
+first two are **tracked** — Decaid knows where they came from and can update
+them; the last two are **snapshots** — copied in once, never followed.
+
+| Source | What Decaid asks for | What to give it for this plugin |
+| --- | --- | --- |
+| **GitHub release** | Repository (`owner/repo`), Asset name (optional) | `Sofronio/decaid-PrintTheShot`, and leave the asset name **empty** |
+| **GitHub branch** | Repository, Branch | `Sofronio/decaid-PrintTheShot`, branch `main` |
+| **Local ZIP** | the `.zip` file itself | `print-the-shot.reaplugin-<version>.zip` from the release's Assets |
+| **Local folder** | a folder holding `manifest.json` and `plugin.js` | `print-the-shot.reaplugin/` in a checkout of this repository |
+
+**GitHub release is the one to use.** It is how the tablet should be set up: new
+versions then arrive as new releases, and "Check for updates" finds them. The
+asset name can stay empty because a release here carries exactly one `.zip`.
+
+**Which file to download**, for the ZIP route: open the
+[releases page](https://github.com/Sofronio/decaid-PrintTheShot/releases), take
+the latest release, and download the asset named
+`print-the-shot.reaplugin-<version>.zip` — the name that matches the plugin's id
+and version. (GitHub's *Source code* buttons give the whole repository rather
+than the packaged plugin. That archive also resolves, because this repository has
+exactly one directory holding a manifest, but the release asset is the artifact
+that was tested.)
+
+**Folder snapshot** means exactly what it sounds like: point Decaid at a
+directory on the machine running it. `installFromFolder` copies that directory in
+and stops looking at it — good for trying a local edit, not for a plugin you want
+to keep updated. The same is true of the ZIP route.
+
+The Plugins screen does all four; these are the calls underneath it:
 
 ```bash
+# GitHub release — what the tablet uses
 curl -X POST http://localhost:8080/api/v1/plugins/install/github-release \
   -H 'content-type: application/json' \
   -d '{"repo": "Sofronio/decaid-PrintTheShot"}'
+
+# GitHub branch
+curl -X POST http://localhost:8080/api/v1/plugins/install/github-branch \
+  -H 'content-type: application/json' \
+  -d '{"repo": "Sofronio/decaid-PrintTheShot", "branch": "main"}'
 ```
 
-Or open the Plugins settings screen in Decaid and install from the repository.
+### Packaging rules Decaid enforces
+
+Worth knowing before publishing a fork of this plugin, because each one fails
+the install outright:
+
+- the release tag is `X.Y.Z` or `vX.Y.Z` and equals `manifest.json`'s `version`;
+- the release carries exactly one `.zip` asset;
+- that archive holds a single plugin root — one directory with `manifest.json`
+  and `plugin.js` inside it, or those two at the top level;
+- the manifest parses, its `id` is a single path-safe component, and its
+  `apiVersion` is `1`.
+
+`npm run package` and the release workflow check all of it.
 
 Settings: server address (`host:port`), upload path (default `upload`), web UI
 address, HTTP or HTTPS, the machine name sent as `machine_id`, whether to upload
@@ -99,10 +146,10 @@ installs with the new version number and the old behaviour.
 
 The version is written in one place — `print-the-shot.reaplugin/manifest.json` —
 and injected into the bundle at build time. The release tag has to equal it, so
-`v1.4.0` and `"version": "1.4.0"` go together:
+`v1.5.5` and `"version": "1.5.5"` go together:
 
 ```bash
-git tag v1.4.0 && git push origin v1.4.0   # CI builds, tests, packages, releases
+git tag v1.5.5 && git push origin v1.5.5   # CI builds, tests, packages, releases
 ```
 
 ## Tests in Decaid
