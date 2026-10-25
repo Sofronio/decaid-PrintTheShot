@@ -185,7 +185,7 @@ export function sharedStyles(): string {
        height-limited; the status badge and Last upload still report results. */
     body.fitted .log-container,
     body.fitted .footer { display: none; }
-    body.fitted #chart { height: 220px; }
+    body.fitted #chart { height: 210px; }
     /* Leave room for the skin's own close button in the top-right corner. */
     body.embedded .header { padding-right: 56px; }
 

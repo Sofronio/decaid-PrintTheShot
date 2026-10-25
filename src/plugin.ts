@@ -25,6 +25,7 @@ interface PrintState {
   useHttp: boolean;
   machineName: string;
   minSeconds: number;
+  showPtsButton: boolean;
 }
 
 function defaultState(): PrintState {
@@ -35,6 +36,7 @@ function defaultState(): PrintState {
     useHttp: true,
     machineName: "",
     minSeconds: 6,
+    showPtsButton: true,
   };
 }
 
@@ -45,6 +47,9 @@ function applySettings(state: PrintState, settings: Record<string, unknown>) {
   if (typeof settings.UseHttp === "boolean") state.useHttp = settings.UseHttp;
   if (typeof settings.MachineName === "string") state.machineName = settings.MachineName;
   if (typeof settings.MinSeconds === "number") state.minSeconds = settings.MinSeconds;
+  if (typeof settings.ShowPtsButton === "boolean") {
+    state.showPtsButton = settings.ShowPtsButton;
+  }
 }
 
 function machineId(name: string): string {
@@ -210,6 +215,7 @@ export default function createPlugin(host: PluginHost): PluginInstance {
       applySettings(state, settings);
       log(
         `loaded v${VERSION}, auto-upload ${state.autoUpload ? "ON" : "OFF"}, ` +
+          `PTS button ${state.showPtsButton ? "ON" : "OFF"}, ` +
           `server=${state.serverUrl || "unset"}`
       );
     },
@@ -265,7 +271,7 @@ export default function createPlugin(host: PluginHost): PluginInstance {
               error: "method not allowed",
             });
           }
-          return json(request, 200, skinAnswer());
+          return json(request, 200, skinAnswer(state.showPtsButton));
 
         case "upload":
           if (request.method === "POST") {

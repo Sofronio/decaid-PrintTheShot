@@ -122,6 +122,23 @@ describe("Streamline surfaces", () => {
     expect(JSON.parse(response.body)).toEqual(skinAnswer());
   });
 
+  it("answers with no surfaces when ShowPtsButton is off", () => {
+    const plugin = createPlugin({ log() {}, emit() {}, storage() {} });
+    plugin.onLoad({ ShowPtsButton: false });
+    const response = plugin.__httpRequestHandler(
+      pluginRequest("skin")
+    ) as { body: string };
+    expect(JSON.parse(response.body)).toEqual({ version: 1, surfaces: [] });
+    // The setting defaults back on when it is absent, so an older stored
+    // settings object does not silently hide the button.
+    const fresh = createPlugin({ log() {}, emit() {}, storage() {} });
+    fresh.onLoad({});
+    const on = fresh.__httpRequestHandler(pluginRequest("skin")) as {
+      body: string;
+    };
+    expect(JSON.parse(on.body).surfaces.length).toBe(2);
+  });
+
   it("lets a skin on another origin frame the page", () => {
     // Decaid sends X-Frame-Options: SAMEORIGIN; the tablet's skin may run on
     // another port, which only frame-ancestors can allow.

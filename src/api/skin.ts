@@ -6,8 +6,14 @@
  * screensaver), and both open this plugin's page as a fitted overlay: the
  * floating window over the dashboard, sized to the page's own content. The page
  * reports that size and closes itself by message (see print-the-shot.ts).
+ *
+ * `showButton` is the ShowPtsButton setting. Turning it off answers with no
+ * surfaces, which is how the skin removes the buttons on its next read; the
+ * page itself stays available at its Web UI address.
  */
-export function skinAnswer(): Record<string, unknown> {
+export function skinAnswer(showButton = true): Record<string, unknown> {
+  if (!showButton) return { version: 1, surfaces: [] };
+
   const openPage = {
     type: "open",
     view: "main",
