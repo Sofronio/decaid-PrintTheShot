@@ -10,6 +10,7 @@ export function sharedStyles(): string {
       color: #eee;
       padding: 16px;
     }
+    print-the-shot { display: block; }
 
     /* ── Header ── */
     .header {
@@ -19,7 +20,21 @@ export function sharedStyles(): string {
       padding-bottom: 12px;
       border-bottom: 1px solid #2a3a5e;
     }
+    .header-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .header h3 { font-size: 18px; color: #eee; }
+    .btn-back {
+      padding: 5px 10px;
+      border: 1px solid #2a3a5e;
+      border-radius: 6px;
+      background: #0f0f1a;
+      color: #eee;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .btn-back:hover { border-color: #e94560; }
+    .btn-back[hidden] { display: none; }
     .status-badge {
       display: flex;
       align-items: center;
@@ -149,6 +164,30 @@ export function sharedStyles(): string {
       display: flex;
       justify-content: space-between;
     }
+
+    /* ── Streamline overlay ── */
+    /* The skin opens the page with embed=1 in a sandboxed iframe. The dialog is
+       transparent until the page reports its size, so the page draws its own
+       card and keeps html/body transparent. */
+    html.fitted, body.fitted { background: transparent; }
+    body.fitted { padding: 0; }
+    body.fitted print-the-shot {
+      width: 720px;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      background: #1a1a2e;
+      border: 1px solid #2a3a5e;
+      border-radius: 16px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    }
+    /* The log and footer are the least useful in a dialog, and the overlay is
+       height-limited; the status badge and Last upload still report results. */
+    body.fitted .log-container,
+    body.fitted .footer { display: none; }
+    body.fitted #chart { height: 220px; }
+    /* Leave room for the skin's own close button in the top-right corner. */
+    body.embedded .header { padding-right: 56px; }
 
     /* ── Responsive ── */
     @media (max-width: 700px) {

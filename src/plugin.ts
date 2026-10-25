@@ -1,6 +1,7 @@
 /// <reference path="./host.d.ts" />
 
 import { toTclFormat } from "./api/transform"
+import { skinAnswer } from "./api/skin";
 import { utf8ByteLength } from "./utils/utf8";
 import { renderSettingsPage } from "./pages/settings";
 
@@ -178,6 +179,24 @@ async function autoProcessShot(
   await uploadWithRetry(buildTargetUrl(state), tcl, log);
 }
 
+/** Case-insensitive header lookup: host headers keep their original casing. */
+function headerValue(headers: Record<string, string>, name: string): string {
+  for (const key of Object.keys(headers || {})) {
+    if (key.toLowerCase() === name) return String(headers[key] || "");
+  }
+  return "";
+}
+
+/**
+ * The origin of an Origin/Referer value, and only that — an http(s) origin with
+ * no credentials or path. Anything else yields "", so no user-supplied text can
+ * reach the frame-ancestors list.
+ */
+function frameOrigin(value: string): string {
+  const match = /^(https?:\/\/[^/?#\s@]+)/i.exec(value || "");
+  return match ? match[1] : "";
+}
+
 export default function createPlugin(host: PluginHost): PluginInstance {
   const log = (msg: string) => host.log(`[print-the-shot] ${msg}`);
   const state = defaultState();
@@ -218,16 +237,35 @@ export default function createPlugin(host: PluginHost): PluginInstance {
 
     __httpRequestHandler(request: HttpRequest): HttpResponse | Promise<HttpResponse> {
       switch (request.endpoint) {
-        case "ui":
+        case "ui": {
+          // Decaid serves plugin pages with X-Frame-Options: SAMEORIGIN, but a
+          // skin may run on another origin (a dev skin on another port). A CSP
+          // frame-ancestors source names it and takes precedence over
+          // X-Frame-Options. Only an http(s) origin is echoed back.
+          const ancestor =
+            frameOrigin(headerValue(request.headers, "origin")) ||
+            frameOrigin(headerValue(request.headers, "referer"));
           return {
             requestId: request.requestId,
             status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
               "Cache-Control": "no-cache",
+              "Content-Security-Policy":
+                "frame-ancestors 'self'" + (ancestor ? " " + ancestor : ""),
             },
             body: renderSettingsPage(request, VERSION),
           };
+        }
+
+        case "skin":
+          if (request.method !== "GET") {
+            return json(request, 405, {
+              ok: false,
+              error: "method not allowed",
+            });
+          }
+          return json(request, 200, skinAnswer());
 
         case "upload":
           if (request.method === "POST") {
