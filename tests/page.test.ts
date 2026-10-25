@@ -74,4 +74,9 @@ describe("Streamline overlay", () => {
     expect(css).toContain("body.fitted print-the-shot");
     expect(css).toContain("body.embedded .header");
   });
+
+  it("offers the ShowPtsButton setting in the page form", () => {
+    expect(printTheShotComponent).toContain('id="set-show-pts"');
+    expect(printTheShotComponent).toContain("ShowPtsButton");
+  });
 });

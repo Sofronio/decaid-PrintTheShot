@@ -18,6 +18,7 @@ const WS_URL =
 
 const DEFAULT_SETTINGS = {
   AutoUpload: true,
+  ShowPtsButton: true,
   ServerUrl: "",
   ServerEndpoint: "upload",
   UseHttp: true,
@@ -98,6 +99,10 @@ class PrintTheShot extends HTMLElement {
           <div class="settings-group">
             <label class="settings-label">Minimum shot length (s)</label>
             <input id="set-min-seconds" type="number" min="0" />
+          </div>
+          <div class="settings-group row">
+            <input id="set-show-pts" type="checkbox" />
+            <label class="settings-label" for="set-show-pts">PTS button in Streamline</label>
           </div>
           <div class="settings-group">
             <label class="settings-label">Last upload</label>
@@ -459,6 +464,7 @@ class PrintTheShot extends HTMLElement {
     // be wiped by pressing Save here.
     const next = Object.assign({}, this.settings, {
       AutoUpload: this.$("#set-auto-upload").checked,
+      ShowPtsButton: this.$("#set-show-pts").checked,
       ServerUrl: this.$("#set-server-url").value.trim(),
       ServerEndpoint: this.$("#set-server-endpoint").value.trim() || "upload",
       UseHttp: this.$("#set-use-http").checked,
@@ -483,6 +489,7 @@ class PrintTheShot extends HTMLElement {
 
   updateUI() {
     this.$("#set-auto-upload").checked = !!this.settings.AutoUpload;
+    this.$("#set-show-pts").checked = !!this.settings.ShowPtsButton;
     this.$("#set-server-url").value = this.settings.ServerUrl || "";
     this.$("#set-server-endpoint").value = this.settings.ServerEndpoint || "";
     this.$("#set-use-http").checked = !!this.settings.UseHttp;

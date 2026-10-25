@@ -152,8 +152,16 @@ var createPlugin = (function() {
 	* screensaver), and both open this plugin's page as a fitted overlay: the
 	* floating window over the dashboard, sized to the page's own content. The page
 	* reports that size and closes itself by message (see print-the-shot.ts).
+	*
+	* `showButton` is the ShowPtsButton setting. Turning it off answers with no
+	* surfaces, which is how the skin removes the buttons on its next read; the
+	* page itself stays available at its Web UI address.
 	*/
-	function skinAnswer() {
+	function skinAnswer(showButton = true) {
+		if (!showButton) return {
+			version: 1,
+			surfaces: []
+		};
 		const openPage = {
 			type: "open",
 			view: "main",
@@ -406,7 +414,7 @@ var createPlugin = (function() {
        height-limited; the status badge and Last upload still report results. */
     body.fitted .log-container,
     body.fitted .footer { display: none; }
-    body.fitted #chart { height: 220px; }
+    body.fitted #chart { height: 210px; }
     /* Leave room for the skin's own close button in the top-right corner. */
     body.embedded .header { padding-right: 56px; }
 
@@ -456,6 +464,7 @@ const WS_URL =
 
 const DEFAULT_SETTINGS = {
   AutoUpload: true,
+  ShowPtsButton: true,
   ServerUrl: "",
   ServerEndpoint: "upload",
   UseHttp: true,
@@ -536,6 +545,10 @@ class PrintTheShot extends HTMLElement {
           <div class="settings-group">
             <label class="settings-label">Minimum shot length (s)</label>
             <input id="set-min-seconds" type="number" min="0" />
+          </div>
+          <div class="settings-group row">
+            <input id="set-show-pts" type="checkbox" />
+            <label class="settings-label" for="set-show-pts">PTS button in Streamline</label>
           </div>
           <div class="settings-group">
             <label class="settings-label">Last upload</label>
@@ -897,6 +910,7 @@ class PrintTheShot extends HTMLElement {
     // be wiped by pressing Save here.
     const next = Object.assign({}, this.settings, {
       AutoUpload: this.$("#set-auto-upload").checked,
+      ShowPtsButton: this.$("#set-show-pts").checked,
       ServerUrl: this.$("#set-server-url").value.trim(),
       ServerEndpoint: this.$("#set-server-endpoint").value.trim() || "upload",
       UseHttp: this.$("#set-use-http").checked,
@@ -921,6 +935,7 @@ class PrintTheShot extends HTMLElement {
 
   updateUI() {
     this.$("#set-auto-upload").checked = !!this.settings.AutoUpload;
+    this.$("#set-show-pts").checked = !!this.settings.ShowPtsButton;
     this.$("#set-server-url").value = this.settings.ServerUrl || "";
     this.$("#set-server-endpoint").value = this.settings.ServerEndpoint || "";
     this.$("#set-use-http").checked = !!this.settings.UseHttp;
@@ -1188,7 +1203,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.7";
+	var VERSION = "1.5.8";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;
@@ -1202,7 +1217,8 @@ customElements.define("print-the-shot", PrintTheShot);
 			serverEndpoint: "upload",
 			useHttp: true,
 			machineName: "",
-			minSeconds: 6
+			minSeconds: 6,
+			showPtsButton: true
 		};
 	}
 	function applySettings(state, settings) {
@@ -1212,6 +1228,7 @@ customElements.define("print-the-shot", PrintTheShot);
 		if (typeof settings.UseHttp === "boolean") state.useHttp = settings.UseHttp;
 		if (typeof settings.MachineName === "string") state.machineName = settings.MachineName;
 		if (typeof settings.MinSeconds === "number") state.minSeconds = settings.MinSeconds;
+		if (typeof settings.ShowPtsButton === "boolean") state.showPtsButton = settings.ShowPtsButton;
 	}
 	function machineId(name) {
 		const clean = String(name || "").replace(/[^A-Za-z0-9]/g, "");
@@ -1330,7 +1347,7 @@ customElements.define("print-the-shot", PrintTheShot);
 			version: VERSION,
 			onLoad(settings) {
 				applySettings(state, settings);
-				log(`loaded v${VERSION}, auto-upload ${state.autoUpload ? "ON" : "OFF"}, server=${state.serverUrl || "unset"}`);
+				log(`loaded v${VERSION}, auto-upload ${state.autoUpload ? "ON" : "OFF"}, PTS button ${state.showPtsButton ? "ON" : "OFF"}, server=${state.serverUrl || "unset"}`);
 			},
 			onUnload() {},
 			onEvent(event) {
@@ -1371,7 +1388,7 @@ customElements.define("print-the-shot", PrintTheShot);
 							ok: false,
 							error: "method not allowed"
 						});
-						return json(request, 200, skinAnswer());
+						return json(request, 200, skinAnswer(state.showPtsButton));
 					case "upload":
 						if (request.method === "POST") return handleUploadProxy(request, log);
 						return methodNotAllowed(request);

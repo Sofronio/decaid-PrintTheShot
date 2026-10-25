@@ -12,7 +12,8 @@ releases.
 
 Settings: server address (`host:port`), upload path (default `upload`), web UI
 address, HTTP or HTTPS, the machine name sent as `machine_id`, whether to upload
-automatically as shots finish, and a minimum shot length so flushes are skipped.
+automatically as shots finish, whether the **PTS** button appears in Streamline,
+and a minimum shot length so flushes are skipped.
 
 ## Install
 
@@ -111,6 +112,12 @@ the dashboard, not a navigation — so browsing and printing a shot never leaves
 the skin. The page's **← Back** button closes the overlay; the skin draws its own
 × as well. Opened as a regular page instead, Back follows the `returnTo` the skin
 adds and returns to the dashboard.
+
+The button is optional: turn off **PTS button in Streamline** in the plugin's
+settings (the same field is on Decaid's Plugins screen) and the next `skin` read
+— on closing the overlay, returning to the dashboard, or the once-a-minute poll
+— removes it from the header and the screensaver. The page itself stays
+reachable at its Web UI address, so hiding the button never hides the plugin.
 
 **The print server's page** — every shot received, charts, date filters — is
 served by the print server, at the address shots are uploaded to:
