@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { printTheShotComponent } from "../src/components/print-the-shot";
-import { pageShell } from "../src/pages/layout";
+import { pageShell, sharedStyles } from "../src/pages/layout";
 import { transformScript } from "../src/api/transform";
 
 /**
@@ -49,5 +49,29 @@ describe("page scripts", () => {
     );
     expect(html).toContain("<print-the-shot");
     expect(printTheShotComponent).toContain('customElements.define("print-the-shot"');
+  });
+});
+
+describe("Streamline overlay", () => {
+  it("the page draws a back button", () => {
+    expect(printTheShotComponent).toContain('id="back"');
+    expect(printTheShotComponent).toContain("goBack()");
+    expect(printTheShotComponent).toContain("returnTo");
+  });
+
+  it("speaks the overlay protocol the skin listens for", () => {
+    // The skin keeps the dialog invisible under `fit` until it gets a size,
+    // and closes it only on this message (or its own ×).
+    expect(printTheShotComponent).toContain("streamline:ready");
+    expect(printTheShotComponent).toContain("streamline:size");
+    expect(printTheShotComponent).toContain("streamline:close");
+    expect(printTheShotComponent).toContain('params.get("embed")');
+  });
+
+  it("styles the embedded page as a transparent fitted card", () => {
+    const css = sharedStyles();
+    expect(css).toContain("html.fitted, body.fitted");
+    expect(css).toContain("body.fitted print-the-shot");
+    expect(css).toContain("body.embedded .header");
   });
 });

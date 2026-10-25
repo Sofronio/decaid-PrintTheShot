@@ -143,6 +143,39 @@ var createPlugin = (function() {
 	}
 	var transformScript = `window.toTclFormat = (${toTclFormat.toString()});`;
 	//#endregion
+	//#region src/api/skin.ts
+	/**
+	* The Streamline skin asks each plugin's `skin` endpoint what to draw, and runs
+	* only the actions it knows — no plugin code runs in the skin.
+	*
+	* The answer adds a **PTS** button to the dashboard header (and over the
+	* screensaver), and both open this plugin's page as a fitted overlay: the
+	* floating window over the dashboard, sized to the page's own content. The page
+	* reports that size and closes itself by message (see print-the-shot.ts).
+	*/
+	function skinAnswer() {
+		const openPage = {
+			type: "open",
+			view: "main",
+			presentation: "overlay",
+			fit: true
+		};
+		return {
+			version: 1,
+			surfaces: [{
+				id: "pts-page",
+				kind: "header-button",
+				label: "PTS",
+				action: openPage
+			}, {
+				id: "pts-saver",
+				kind: "screensaver-button",
+				label: "PTS",
+				action: openPage
+			}]
+		};
+	}
+	//#endregion
 	//#region src/utils/utf8.ts
 	/**
 	* UTF-8 byte length, counted by hand.
@@ -198,6 +231,7 @@ var createPlugin = (function() {
       color: #eee;
       padding: 16px;
     }
+    print-the-shot { display: block; }
 
     /* ── Header ── */
     .header {
@@ -207,7 +241,21 @@ var createPlugin = (function() {
       padding-bottom: 12px;
       border-bottom: 1px solid #2a3a5e;
     }
+    .header-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .header h3 { font-size: 18px; color: #eee; }
+    .btn-back {
+      padding: 5px 10px;
+      border: 1px solid #2a3a5e;
+      border-radius: 6px;
+      background: #0f0f1a;
+      color: #eee;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .btn-back:hover { border-color: #e94560; }
+    .btn-back[hidden] { display: none; }
     .status-badge {
       display: flex;
       align-items: center;
@@ -338,6 +386,30 @@ var createPlugin = (function() {
       justify-content: space-between;
     }
 
+    /* ── Streamline overlay ── */
+    /* The skin opens the page with embed=1 in a sandboxed iframe. The dialog is
+       transparent until the page reports its size, so the page draws its own
+       card and keeps html/body transparent. */
+    html.fitted, body.fitted { background: transparent; }
+    body.fitted { padding: 0; }
+    body.fitted print-the-shot {
+      width: 720px;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      background: #1a1a2e;
+      border: 1px solid #2a3a5e;
+      border-radius: 16px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    }
+    /* The log and footer are the least useful in a dialog, and the overlay is
+       height-limited; the status badge and Last upload still report results. */
+    body.fitted .log-container,
+    body.fitted .footer { display: none; }
+    body.fitted #chart { height: 220px; }
+    /* Leave room for the skin's own close button in the top-right corner. */
+    body.embedded .header { padding-right: 56px; }
+
     /* ── Responsive ── */
     @media (max-width: 700px) {
       .settings-grid { grid-template-columns: 1fr; }
@@ -401,6 +473,9 @@ class PrintTheShot extends HTMLElement {
     this.reconnectTimer = null;
     this.lastUpload = null;
     this.logs = [];
+    this.embedded = false;
+    this.returnTo = "";
+    this.resizeObserver = null;
   }
 
   connectedCallback() {
@@ -409,6 +484,7 @@ class PrintTheShot extends HTMLElement {
     this.currentShot = null;
     this.render();
     this.cacheEls();
+    this.initHost();
     this.loadSettings().then(() => {
       this.updateUI();
       this.connectSocket();
@@ -423,7 +499,10 @@ class PrintTheShot extends HTMLElement {
   render() {
     this.innerHTML = \`
       <div class="header">
-        <h3>Print The Shot</h3>
+        <div class="header-title">
+          <button id="back" class="btn-back" type="button" hidden>&larr; Back</button>
+          <h3>Print The Shot</h3>
+        </div>
         <span class="status-badge"><span class="status-dot">●</span> <span id="status-text">Connecting…</span></span>
       </div>
       <div class="settings-grid">
@@ -500,6 +579,8 @@ class PrintTheShot extends HTMLElement {
   }
 
   bindEvents() {
+    const back = this.$("#back");
+    if (back) back.addEventListener("click", () => this.goBack());
     this.$("#print-last").addEventListener("click", () => this.manualUpload());
     this.$("#print-current").addEventListener("click", () => this.printCurrent());
     this.$("#prev-shot").addEventListener("click", () => this.stepShot(1));
@@ -509,6 +590,121 @@ class PrintTheShot extends HTMLElement {
       this.logs = [];
       this.logContainer.innerHTML = "";
     });
+  }
+
+  // ---------- Streamline host ----------
+
+  /**
+   * The Streamline skin opens this page in an overlay iframe with embed=1.
+   * The page posts streamline:ready, reports the size of the card it drew,
+   * and closes the dialog with streamline:close. A same-frame open
+   * (presentation: "page") adds returnTo instead, so the back button
+   * returns to the dashboard by navigation. Either way the back button is
+   * shown; opened directly in a browser, there is nowhere to go back to.
+   */
+  initHost() {
+    const params = new URLSearchParams(location.search);
+    this.embedded = params.get("embed") === "1";
+    this.returnTo = this.validReturnTo(params.get("returnTo"));
+    const back = this.$("#back");
+    if (back) back.hidden = !(this.embedded || this.returnTo);
+    if (!this.embedded) return;
+
+    document.documentElement.classList.add("fitted");
+    document.body.classList.add("fitted", "embedded");
+    try {
+      window.parent.postMessage({ type: "streamline:ready" }, "*");
+    } catch (e) {
+      /* not framed */
+    }
+    this.postSize();
+    setTimeout(() => this.postSize(), 60);
+    setTimeout(() => this.postSize(), 300);
+    this.onWindowResize = () => this.postSize();
+    window.addEventListener("resize", this.onWindowResize);
+    window.addEventListener("load", this.onWindowResize);
+    if (window.ResizeObserver) {
+      try {
+        this.resizeObserver = new ResizeObserver(() => this.postSize());
+        this.resizeObserver.observe(this);
+      } catch (e) {
+        this.resizeObserver = null;
+      }
+    }
+  }
+
+  /** The card's size in CSS pixels; the skin sizes its dialog to this. */
+  postSize() {
+    if (!this.embedded) return;
+    const rect = this.getBoundingClientRect();
+    const width = Math.ceil(rect.width);
+    const height = Math.ceil(rect.height);
+    if (width > 0 && height > 0) {
+      try {
+        window.parent.postMessage(
+          { type: "streamline:size", width: width, height: height },
+          "*"
+        );
+      } catch (e) {
+        /* not framed */
+      }
+    }
+  }
+
+  validReturnTo(raw) {
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      if (
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        !url.username &&
+        !url.password
+      ) {
+        return url.href;
+      }
+    } catch (e) {
+      /* not a URL */
+    }
+    return "";
+  }
+
+  goBack() {
+    if (this.returnTo) {
+      // Go back only when the page actually came from there; otherwise a
+      // history.back() would leave the user nowhere (or on an unrelated page).
+      let came = false;
+      try {
+        came =
+          history.length > 1 &&
+          new URL(document.referrer).origin === new URL(this.returnTo).origin;
+      } catch (e) {
+        came = false;
+      }
+      if (!came) {
+        location.assign(this.returnTo);
+        return;
+      }
+      const fallback = setTimeout(
+        () => location.assign(this.returnTo),
+        1500
+      );
+      window.addEventListener(
+        "pagehide",
+        () => clearTimeout(fallback),
+        { once: true }
+      );
+      history.back();
+      return;
+    }
+    if (this.embedded) {
+      try {
+        window.parent.postMessage({ type: "streamline:close" }, "*");
+      } catch (e) {
+        /* not framed */
+      }
+      return;
+    }
+    history.back();
   }
 
   // ---------- Shot browser ----------
@@ -992,7 +1188,7 @@ customElements.define("print-the-shot", PrintTheShot);
 	}
 	//#endregion
 	//#region src/plugin.ts
-	var VERSION = "1.5.6";
+	var VERSION = "1.5.7";
 	var UPLOAD_TIMEOUT_MS = 1e4;
 	var SHOT_FETCH_RETRIES = 3;
 	var SHOT_FETCH_DELAY_MS = 1e3;
@@ -1111,6 +1307,20 @@ customElements.define("print-the-shot", PrintTheShot);
 		const tcl = toTclFormat(shot);
 		await uploadWithRetry(buildTargetUrl(state), tcl, log);
 	}
+	/** Case-insensitive header lookup: host headers keep their original casing. */
+	function headerValue(headers, name) {
+		for (const key of Object.keys(headers || {})) if (key.toLowerCase() === name) return String(headers[key] || "");
+		return "";
+	}
+	/**
+	* The origin of an Origin/Referer value, and only that — an http(s) origin with
+	* no credentials or path. Anything else yields "", so no user-supplied text can
+	* reach the frame-ancestors list.
+	*/
+	function frameOrigin(value) {
+		const match = /^(https?:\/\/[^/?#\s@]+)/i.exec(value || "");
+		return match ? match[1] : "";
+	}
 	function createPlugin(host) {
 		const log = (msg) => host.log(`[print-the-shot] ${msg}`);
 		const state = defaultState();
@@ -1143,15 +1353,25 @@ customElements.define("print-the-shot", PrintTheShot);
 			},
 			__httpRequestHandler(request) {
 				switch (request.endpoint) {
-					case "ui": return {
-						requestId: request.requestId,
-						status: 200,
-						headers: {
-							"Content-Type": "text/html; charset=utf-8",
-							"Cache-Control": "no-cache"
-						},
-						body: renderSettingsPage(request, VERSION)
-					};
+					case "ui": {
+						const ancestor = frameOrigin(headerValue(request.headers, "origin")) || frameOrigin(headerValue(request.headers, "referer"));
+						return {
+							requestId: request.requestId,
+							status: 200,
+							headers: {
+								"Content-Type": "text/html; charset=utf-8",
+								"Cache-Control": "no-cache",
+								"Content-Security-Policy": "frame-ancestors 'self'" + (ancestor ? " " + ancestor : "")
+							},
+							body: renderSettingsPage(request, VERSION)
+						};
+					}
+					case "skin":
+						if (request.method !== "GET") return json(request, 405, {
+							ok: false,
+							error: "method not allowed"
+						});
+						return json(request, 200, skinAnswer());
 					case "upload":
 						if (request.method === "POST") return handleUploadProxy(request, log);
 						return methodNotAllowed(request);

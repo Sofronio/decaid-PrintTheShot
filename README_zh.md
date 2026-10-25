@@ -91,6 +91,12 @@ http://<decaid-host>:8080/api/v1/plugins/print-the-shot.reaplugin/ui
 台机器的局域网地址。它和 **Web UI address** 设置项里存的是同一个字符串 —— 所以那
 一栏预填的就是它。
 
+**在 Streamline 皮肤里**,这个页面只隔一个按钮:插件会回答皮肤的 `skin` 端点,在
+dashboard 顶部栏放一个 **PTS** 按钮(屏保上也放一个)。点它会把页面作为浮动窗口
+打开 —— 一张按内容尺寸贴合、盖在 dashboard 上的卡片,不是页面跳转,所以浏览和打印
+shot 都不用离开皮肤。页面里的 **← Back** 按钮会关掉这个浮窗;皮肤自己也会画一个
+×。如果皮肤退回成普通页面打开,Back 会走皮肤加上的 `returnTo`,同样回到 dashboard。
+
 **打印服务器的页面** —— 收到的每一条 shot、图表、日期筛选 —— 由打印服务器自己提
 供,地址就是 shot 上传到的那个:
 
@@ -118,6 +124,7 @@ http://<打印服务器地址>:8000/
 | id | 类型 | 作用 |
 | --- | --- | --- |
 | `ui` | http | 提供插件的页面 |
+| `skin` | http | Streamline 界面元素:**PTS** 顶部栏按钮和屏保按钮,把页面作为贴合内容的浮窗打开 |
 | `upload` | http | `POST {url, shot}` —— 代理一次上传,让浏览器不必向局域网发起跨源请求 |
 | `debug` | http | `GET` 插件版本与加载状态 |
 | `events` | websocket | 每存下一条新 shot 就推送它的 id |

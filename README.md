@@ -104,6 +104,14 @@ http://<decaid-host>:8080/api/v1/plugins/print-the-shot.reaplugin/ui
 LAN address from a phone or desktop. It is the same string the **Web UI address**
 setting holds, which is why that field is prefilled with it.
 
+**In the Streamline skin**, the page is one button away: the plugin answers the
+skin's `skin` endpoint with a **PTS** button in the dashboard header (and over
+the screensaver). It opens the page as a floating overlay — a fitted card over
+the dashboard, not a navigation — so browsing and printing a shot never leaves
+the skin. The page's **← Back** button closes the overlay; the skin draws its own
+× as well. Opened as a regular page instead, Back follows the `returnTo` the skin
+adds and returns to the dashboard.
+
 **The print server's page** — every shot received, charts, date filters — is
 served by the print server, at the address shots are uploaded to:
 
@@ -132,6 +140,7 @@ gets sent, the print server decides what comes out of the printer.
 | id | type | what it does |
 | --- | --- | --- |
 | `ui` | http | serves the plugin's page |
+| `skin` | http | Streamline surfaces: the **PTS** header and screensaver buttons, which open the page as a fitted overlay |
 | `upload` | http | `POST {url, shot}` — proxies one upload so the browser never has to make a cross-origin request to the LAN |
 | `debug` | http | `GET` plugin version and load status |
 | `events` | websocket | pushes the id of each newly stored shot |

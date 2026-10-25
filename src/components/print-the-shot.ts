@@ -35,6 +35,9 @@ class PrintTheShot extends HTMLElement {
     this.reconnectTimer = null;
     this.lastUpload = null;
     this.logs = [];
+    this.embedded = false;
+    this.returnTo = "";
+    this.resizeObserver = null;
   }
 
   connectedCallback() {
@@ -43,6 +46,7 @@ class PrintTheShot extends HTMLElement {
     this.currentShot = null;
     this.render();
     this.cacheEls();
+    this.initHost();
     this.loadSettings().then(() => {
       this.updateUI();
       this.connectSocket();
@@ -57,7 +61,10 @@ class PrintTheShot extends HTMLElement {
   render() {
     this.innerHTML = \`
       <div class="header">
-        <h3>Print The Shot</h3>
+        <div class="header-title">
+          <button id="back" class="btn-back" type="button" hidden>&larr; Back</button>
+          <h3>Print The Shot</h3>
+        </div>
         <span class="status-badge"><span class="status-dot">●</span> <span id="status-text">Connecting…</span></span>
       </div>
       <div class="settings-grid">
@@ -134,6 +141,8 @@ class PrintTheShot extends HTMLElement {
   }
 
   bindEvents() {
+    const back = this.$("#back");
+    if (back) back.addEventListener("click", () => this.goBack());
     this.$("#print-last").addEventListener("click", () => this.manualUpload());
     this.$("#print-current").addEventListener("click", () => this.printCurrent());
     this.$("#prev-shot").addEventListener("click", () => this.stepShot(1));
@@ -143,6 +152,121 @@ class PrintTheShot extends HTMLElement {
       this.logs = [];
       this.logContainer.innerHTML = "";
     });
+  }
+
+  // ---------- Streamline host ----------
+
+  /**
+   * The Streamline skin opens this page in an overlay iframe with embed=1.
+   * The page posts streamline:ready, reports the size of the card it drew,
+   * and closes the dialog with streamline:close. A same-frame open
+   * (presentation: "page") adds returnTo instead, so the back button
+   * returns to the dashboard by navigation. Either way the back button is
+   * shown; opened directly in a browser, there is nowhere to go back to.
+   */
+  initHost() {
+    const params = new URLSearchParams(location.search);
+    this.embedded = params.get("embed") === "1";
+    this.returnTo = this.validReturnTo(params.get("returnTo"));
+    const back = this.$("#back");
+    if (back) back.hidden = !(this.embedded || this.returnTo);
+    if (!this.embedded) return;
+
+    document.documentElement.classList.add("fitted");
+    document.body.classList.add("fitted", "embedded");
+    try {
+      window.parent.postMessage({ type: "streamline:ready" }, "*");
+    } catch (e) {
+      /* not framed */
+    }
+    this.postSize();
+    setTimeout(() => this.postSize(), 60);
+    setTimeout(() => this.postSize(), 300);
+    this.onWindowResize = () => this.postSize();
+    window.addEventListener("resize", this.onWindowResize);
+    window.addEventListener("load", this.onWindowResize);
+    if (window.ResizeObserver) {
+      try {
+        this.resizeObserver = new ResizeObserver(() => this.postSize());
+        this.resizeObserver.observe(this);
+      } catch (e) {
+        this.resizeObserver = null;
+      }
+    }
+  }
+
+  /** The card's size in CSS pixels; the skin sizes its dialog to this. */
+  postSize() {
+    if (!this.embedded) return;
+    const rect = this.getBoundingClientRect();
+    const width = Math.ceil(rect.width);
+    const height = Math.ceil(rect.height);
+    if (width > 0 && height > 0) {
+      try {
+        window.parent.postMessage(
+          { type: "streamline:size", width: width, height: height },
+          "*"
+        );
+      } catch (e) {
+        /* not framed */
+      }
+    }
+  }
+
+  validReturnTo(raw) {
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      if (
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        !url.username &&
+        !url.password
+      ) {
+        return url.href;
+      }
+    } catch (e) {
+      /* not a URL */
+    }
+    return "";
+  }
+
+  goBack() {
+    if (this.returnTo) {
+      // Go back only when the page actually came from there; otherwise a
+      // history.back() would leave the user nowhere (or on an unrelated page).
+      let came = false;
+      try {
+        came =
+          history.length > 1 &&
+          new URL(document.referrer).origin === new URL(this.returnTo).origin;
+      } catch (e) {
+        came = false;
+      }
+      if (!came) {
+        location.assign(this.returnTo);
+        return;
+      }
+      const fallback = setTimeout(
+        () => location.assign(this.returnTo),
+        1500
+      );
+      window.addEventListener(
+        "pagehide",
+        () => clearTimeout(fallback),
+        { once: true }
+      );
+      history.back();
+      return;
+    }
+    if (this.embedded) {
+      try {
+        window.parent.postMessage({ type: "streamline:close" }, "*");
+      } catch (e) {
+        /* not framed */
+      }
+      return;
+    }
+    history.back();
   }
 
   // ---------- Shot browser ----------

@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { utf8ByteLength } from "../src/utils/utf8";
+import { skinAnswer } from "../src/api/skin";
+import createPlugin from "../src/plugin";
 
 /**
  * The backend runs in Decaid's embedded JS engine, not a browser.
@@ -76,5 +78,69 @@ describe("backend sources", () => {
     // shared header helper; a bare `fetch` with a JSON body loses the header and
     // the print server silently saves an empty file.
     expect(headers.length).toBe(posts.length);
+  });
+});
+
+function pluginRequest(endpoint: string, method = "GET", headers: Record<string, string> = {}) {
+  return {
+    requestId: "test",
+    endpoint,
+    method,
+    headers,
+    body: null,
+    query: {},
+  };
+}
+
+describe("Streamline surfaces", () => {
+  it("offers a PTS button that opens the page as a fitted overlay", () => {
+    const answer = skinAnswer() as {
+      version: number;
+      surfaces: Array<Record<string, any>>;
+    };
+    expect(answer.version).toBe(1);
+    const header = answer.surfaces.find((s) => s.kind === "header-button");
+    const saver = answer.surfaces.find((s) => s.kind === "screensaver-button");
+    for (const surface of [header, saver]) {
+      expect(surface?.label).toBe("PTS");
+      expect(surface?.action).toEqual({
+        type: "open",
+        view: "main",
+        presentation: "overlay",
+        fit: true,
+      });
+    }
+  });
+
+  it("serves the skin answer over the skin endpoint", () => {
+    const plugin = createPlugin({ log() {}, emit() {}, storage() {} });
+    const response = plugin.__httpRequestHandler(
+      pluginRequest("skin")
+    ) as { status: number; headers: Record<string, string>; body: string };
+    expect(response.status).toBe(200);
+    expect(response.headers["Content-Type"]).toContain("application/json");
+    expect(JSON.parse(response.body)).toEqual(skinAnswer());
+  });
+
+  it("lets a skin on another origin frame the page", () => {
+    // Decaid sends X-Frame-Options: SAMEORIGIN; the tablet's skin may run on
+    // another port, which only frame-ancestors can allow.
+    const plugin = createPlugin({ log() {}, emit() {}, storage() {} });
+    const response = plugin.__httpRequestHandler(
+      pluginRequest("ui", "GET", { origin: "http://tablet.local:25123" })
+    ) as { headers: Record<string, string> };
+    expect(response.headers["Content-Security-Policy"]).toBe(
+      "frame-ancestors 'self' http://tablet.local:25123"
+    );
+  });
+
+  it("ignores a malformed frame ancestor", () => {
+    const plugin = createPlugin({ log() {}, emit() {}, storage() {} });
+    const response = plugin.__httpRequestHandler(
+      pluginRequest("ui", "GET", { referer: "not a url" })
+    ) as { headers: Record<string, string> };
+    expect(response.headers["Content-Security-Policy"]).toBe(
+      "frame-ancestors 'self'"
+    );
   });
 });
